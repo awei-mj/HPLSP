@@ -44,5 +44,6 @@ int main(int argc, char *argv[])
         close(connfd);
     }
     close(sock);
+    struct msghdr asd;
     return 0;
 }
