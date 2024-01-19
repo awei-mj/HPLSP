@@ -590,4 +590,3 @@ Linux中strerror可转换errno，下述函数可将上表错误码转换成易�
 #include <netdb.h>
 const char *gai_strerror(int error);
 ```
-
