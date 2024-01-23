@@ -32,11 +32,11 @@ struct sockaddr {
 };
 ```
 
-|协议族|地址族|描述|地址值含义和长度|
-|-|-|-|-|
-|PF_UNIX|AF_UNIX|UNIX本地域协议族|文件的路径名，长度可达108字节|
-|PF_INET|AF_INET|TCP/IPv4协议族|16bit端口号和32bitIPv4地址，共6字节|
-|PF_INET6|AF_INET6|TCP/IPv6协议族|16bit端口号,32bit流标识,128bitIPv6地址,32bit范围ID，共26字节|
+| 协议族   | 地址族   | 描述             | 地址值含义和长度                                             |
+| -------- | -------- | ---------------- | ------------------------------------------------------------ |
+| PF_UNIX  | AF_UNIX  | UNIX本地域协议族 | 文件的路径名，长度可达108字节                                |
+| PF_INET  | AF_INET  | TCP/IPv4协议族   | 16bit端口号和32bitIPv4地址，共6字节                          |
+| PF_INET6 | AF_INET6 | TCP/IPv6协议族   | 16bit端口号,32bit流标识,128bitIPv6地址,32bit范围ID，共26字节 |
 
 宏`PF_*`和`AF_*`定义与`<bits/socket.h>`中，且值相同，故通常混用。
 
@@ -245,11 +245,11 @@ int close(int fd);
 int shutdown(int sockfd, int howto); //成功返回0，失败返回-1并设置errno
 ```
 
-|howto可选值|含义|
-|-|-|
-|SHUT_RD|关闭读，接受缓冲区数据被抛弃|
-|SHUT_WR|关闭写，发送缓冲区数据发出后真正关闭连接|
-|SHUT_RDWR|同时关|
+| howto可选值 | 含义                                     |
+| ----------- | ---------------------------------------- |
+| SHUT_RD     | 关闭读，接受缓冲区数据被抛弃             |
+| SHUT_WR     | 关闭写，发送缓冲区数据发出后真正关闭连接 |
+| SHUT_RDWR   | 同时关                                   |
 
 ## 数据读写
 
@@ -266,16 +266,16 @@ ssize_t send(int sockfd, const void *buf, size_t len, int flags); //返回写入
 
 flags一般置0，可选值如下，支持逻辑或：
 
-|选项名|含义|send|recv|
-|-|-|-|-|
-|MSG_CONFIRM    |指示链路层监听对方回应，直到得到答复，仅能用于SOCK_DGRAM和SOCK_RAW类型的socket     |Y|N|
-|MSG_DONTROUTE  |不查看路由表，直接将数据发给本地局域网内的主机，表示发送者知道目标主机在本地网络上   |Y|N|
-|MSG_DONTWAIT   |此次操作是非阻塞的                                                             |Y|Y|
-|MSG_MORE       |告知内核应用层有更多数据要发送，内核会等待新数据一并发送                           |Y|N|
-|MSG_WAITALL    |仅在读到指定数量字节后才返回                                                    |N|Y|
-|MSG_PEEK       |窥探读缓存中的数据，不会导致数据被清除                                           |N|Y|
-|MSG_OOB        |发送或接收紧急(out of bound)数据                                               |Y|Y|
-|MSG_NOSIGNAL   |往读端关闭的管道或socket连接中写数据时不引发SIGPIPE信号                          |Y|N|
+| 选项名        | 含义                                                                               | send | recv |
+| ------------- | ---------------------------------------------------------------------------------- | ---- | ---- |
+| MSG_CONFIRM   | 指示链路层监听对方回应，直到得到答复，仅能用于SOCK_DGRAM和SOCK_RAW类型的socket     | Y    | N    |
+| MSG_DONTROUTE | 不查看路由表，直接将数据发给本地局域网内的主机，表示发送者知道目标主机在本地网络上 | Y    | N    |
+| MSG_DONTWAIT  | 此次操作是非阻塞的                                                                 | Y    | Y    |
+| MSG_MORE      | 告知内核应用层有更多数据要发送，内核会等待新数据一并发送                           | Y    | N    |
+| MSG_WAITALL   | 仅在读到指定数量字节后才返回                                                       | N    | Y    |
+| MSG_PEEK      | 窥探读缓存中的数据，不会导致数据被清除                                             | N    | Y    |
+| MSG_OOB       | 发送或接收紧急(out of bound)数据                                                   | Y    | Y    |
+| MSG_NOSIGNAL  | 往读端关闭的管道或socket连接中写数据时不引发SIGPIPE信号                            | Y    | N    |
 
 ### UDP数据读写
 
@@ -351,80 +351,31 @@ int setsockopt(int sockfd, int level, int option_name, const void* option_value,
 
 sockfd参数指定被操作的目标socket。level参数指定要操作哪个协议的选项（即属性），比如IPv4、IPv6、TCP等。option_name参数则指定选项的名字。我们在表5-5中列举了socket通信中几个比较常用的socket选项。option_value和option_len参数分别是被操作选项的值和长度，不同的选项具有不同类型的值。
 
-<table>
-  <th>level</th><th>option name</th><th>数据类型</th><th>说明</th>
-  <tr>
-    <td rowspan=14>SOL_SOCKET<br/>(通用socket选项，与协议无关)</td>
-    <td>SO_DEBUG</td><td>int</td><td>打开调试信息</td>
-  </tr>
-  <tr>
-    <td>SO_REUSEADDR</td><td>int</td><td>重用本地地址</td>
-  </tr>
-  <tr>
-    <td>SO_TYPE</td><td>int</td><td>获取socket类型</td>
-  </tr>
-  <tr>
-    <td>SO_ERROR</td><td>int</td><td>获取并清除socket错误状态</td>
-  </tr>
-  <tr>
-    <td>SO_DONTROUTE</td><td>int</td><td>不查看路由表</td>
-  </tr>
-  <tr>
-    <td>SO_RCVBUF</td><td>int</td><td>TCP接收缓冲区大小</td>
-  </tr>
-  <tr>
-    <td>SO_SNDBUF</td><td>int</td><td>TCP发送缓冲区大小</td>
-  </tr>
-  <tr>
-    <td>SO_KEEPALIVE</td><td>int</td><td>发送周期性保活报文以保持连接</td>
-  </tr>
-  <tr>
-    <td>SO_OOBINLINE</td><td>int</td><td>带外数据存在普通数据队列中</td>
-  </tr>
-  <tr>
-    <td>SO_LINGER</td><td>linger</td>linger<td>有数据发送则延迟关闭</td>
-  </tr>
-  <tr>
-    <td>SO_RCVLOWAT</td><td>int</td><td>接收缓冲区低水位标记</td>
-  </tr>
-  <tr>
-    <td>SO_SNDLOWAT</td><td>int</td><td>发送缓冲区低水位标记</td>
-  </tr>
-  <tr>
-    <td>SO_RCVTIMEO</td><td>timeval</td><td>接收数据超时</td>
-  </tr>
-  <tr>
-    <td>SO_SNDTIMEO</td><td>timeval</td><td>发送数据超时</td>
-  </tr>
-  <tr>
-    <td rowspan=2>IPPROTO_IP(IPv4)</td>
-    <td>IP_TOS</td><td>int</td><td>服务类型</td>
-  </tr>
-  <tr>
-    <td>IP_TTL</td><td>int</td><td>存活时间</td>
-  </tr>
-  <tr>
-    <td rowspan=4>IPPROTO_IP6(IPv6)</td>
-    <td>IPV6_NEXTHOP</td><td>sockaddr_in6</td><td>下一跳IP地址</td>
-  </tr>
-  <tr>
-    <td>IPV6_RECVPKTINFO</td><td>int</td><td>接收分组信息</td>
-  </tr>
-  <tr>
-    <td>IPV6_DONTFRAG</td><td>int</td><td>禁止分片</td>
-  </tr>
-  <tr>
-    <td>IPV6_RECVTCLASS</td><td>int</td><td>接收通信类型</td>
-  </tr>
-  <tr>
-    <td rowspan=2>IPPROTO_TCP(TCP)</td>
-    <td>TCP_MAXSEG</td><td>int</td><td>TCP最大报文段大小</td>
-  </tr>
-  <tr>
-    <td>TCP_NODELAY</td><td>int</td><td>禁止Nagle算法</td>
-  </tr>
-</table>
-
+  | level                                       | option name      | 数据类型     | 说明                         |
+  | ------------------------------------------- | ---------------- | ------------ | ---------------------------- |
+  | SOL_SOCKET<br/>(通用socket选项，与协议无关) | SO_DEBUG         | int          | 打开调试信息                 |
+  | ^                                           | SO_REUSEADDR     | int          | 重用本地地址                 |
+  | ^                                           | SO_TYPE          | int          | 获取socket类型               |
+  | ^                                           | SO_ERROR         | int          | 获取并清除socket错误状态     |
+  | ^                                           | SO_DONTROUTE     | int          | 不查看路由表                 |
+  | ^                                           | SO_RCVBUF        | int          | TCP接收缓冲区大小            |
+  | ^                                           | SO_SNDBUF        | int          | TCP发送缓冲区大小            |
+  | ^                                           | SO_KEEPALIVE     | int          | 发送周期性保活报文以保持连接 |
+  | ^                                           | SO_OOBINLINE     | int          | 带外数据存在普通数据队列中   |
+  | ^                                           | SO_LINGER        | linger       | 有数据发送则延迟关闭         |
+  | ^                                           | SO_RCVLOWAT      | int          | 接收缓冲区低水位标记         |
+  | ^                                           | SO_SNDLOWAT      | int          | 发送缓冲区低水位标记         |
+  | ^                                           | SO_RCVTIMEO      | timeval      | 接收数据超时                 |
+  | ^                                           | SO_SNDTIMEO      | timeval      | 发送数据超时                 |
+  | IPPROTO_IP(IPv4)                            | IP_TOS           | int          | 服务类型                     |
+  | ^                                           | IP_TTL           | int          | 存活时间                     |
+  | IPPROTO_IP6(IPv6)                           | IPV6_NEXTHOP     | sockaddr_in6 | 下一跳IP地址                 |
+  | ^                                           | IPV6_RECVPKTINFO | int          | 接收分组信息                 |
+  | ^                                           | IPV6_DONTFRAG    | int          | 禁止分片                     |
+  | ^                                           | IPV6_RECVTCLASS  | int          | 接收通信类型                 |
+  | IPPROTO_TCP(TCP)                            | TCP_MAXSEG       | int          | TCP最大报文段大小            |
+  | ^                                           | TCP_NODELAY      | int          | 禁止Nagle算法                |
+  
 部分选项只有在调用listen前针对监听socket才有效，使之继承到连接socket上: SO_DEBUG、SO_DONTROUTE、SO_KEEPALIVE、SO_LINGER、SO_OOBINLINE、SO_RCVBUF、SO_RCVLOWAT、SO_SNDBUF、SO_SNDLOWAT、TCP_MAXSEG和TCP_NODELAY。对客户端而言，应该在调用connect函数前设置。
 
 ### SO_REUSEADDR
@@ -537,15 +488,15 @@ hostname参数可以接收主机名，也可以接收字符串表示的IP地址�
 
 ai_flags选项
 
-|选项|含义|
-|-|-|
-|AI_PASSIVE|服务端是否会将取得的socket地址用于被动打开|
-|AI_CANONNAME|告诉getaddrinfo返回主机的别名|
-|AI_NUMERICHOST|hostname必须是字符串表示的ip地址，从而避免DNS查询|
-|AI_NUMERICSERV|service参数使用十进制端口号|
-|AI_V4MAPPED|如果ai_family设置为AF_INET6且没有v6地址结果，将v4地址映射为v6地址|
-|AI_ALL|必须和上条一起使用，同时返回符合条件的v6地址和由v4映射得到的v6地址|
-|AI_ADDRCONFIG|与V4MAPPED互斥|
+| 选项           | 含义                                                               |
+| -------------- | ------------------------------------------------------------------ |
+| AI_PASSIVE     | 服务端是否会将取得的socket地址用于被动打开                         |
+| AI_CANONNAME   | 告诉getaddrinfo返回主机的别名                                      |
+| AI_NUMERICHOST | hostname必须是字符串表示的ip地址，从而避免DNS查询                  |
+| AI_NUMERICSERV | service参数使用十进制端口号                                        |
+| AI_V4MAPPED    | 如果ai_family设置为AF_INET6且没有v6地址结果，将v4地址映射为v6地址  |
+| AI_ALL         | 必须和上条一起使用，同时返回符合条件的v6地址和由v4映射得到的v6地址 |
+| AI_ADDRCONFIG  | 与V4MAPPED互斥                                                     |
 
 调用结束后需要释放res
 
@@ -561,28 +512,28 @@ int getnameinfo(const struct sockaddr *sockaddr, socklen_t addrlen, char *host, 
 
 flags:
 
-|选项|含义|
-|-|-|
-|NI_NAMEREQD|如果socket地址不能获得主机名，返回错误|
-|NI_DGRAM|返回数据报服务|
-|NI_NUMERICHOST|返回字符串表示的IP地址，而不是主机名|
-|NI_NUMERICSERV|返回字符串表示的十进制端口号，而不是服务名|
-|NI_NOFQDN|仅返回主机域名的第一部分|
+| 选项           | 含义                                       |
+| -------------- | ------------------------------------------ |
+| NI_NAMEREQD    | 如果socket地址不能获得主机名，返回错误     |
+| NI_DGRAM       | 返回数据报服务                             |
+| NI_NUMERICHOST | 返回字符串表示的IP地址，而不是主机名       |
+| NI_NUMERICSERV | 返回字符串表示的十进制端口号，而不是服务名 |
+| NI_NOFQDN      | 仅返回主机域名的第一部分                   |
 
 这两个函数成功时返回0,失败时返回错误码
 
-|选项|含义|
-|-|-|
-|EAI_AGAIN|调用临时失败，稍后再试|
-|EAI_BADFLAGS|非法的flags值|
-|EAI_FAIL|名称解析失败|
-|EAI_FAMILY|不支持的ai_family参数|
-|EAI_MEMORY|内存分配失败|
-|EAI_NONAME|非法的主机名或服务名|
-|EAI_OVERFLOW|用户提供的缓冲区溢出|
-|EAI_SERVICE|没有支持的服务|
-|EAI_SOCKTYPE|不支持的服务类型|
-|EAI_SYSTEM|系统错误，错误值存在errno中|
+| 选项         | 含义                        |
+| ------------ | --------------------------- |
+| EAI_AGAIN    | 调用临时失败，稍后再试      |
+| EAI_BADFLAGS | 非法的flags值               |
+| EAI_FAIL     | 名称解析失败                |
+| EAI_FAMILY   | 不支持的ai_family参数       |
+| EAI_MEMORY   | 内存分配失败                |
+| EAI_NONAME   | 非法的主机名或服务名        |
+| EAI_OVERFLOW | 用户提供的缓冲区溢出        |
+| EAI_SERVICE  | 没有支持的服务              |
+| EAI_SOCKTYPE | 不支持的服务类型            |
+| EAI_SYSTEM   | 系统错误，错误值存在errno中 |
 
 Linux中strerror可转换errno，下述函数可将上表错误码转换成易读的字符串形式：
 
