@@ -141,10 +141,109 @@ int poll(struct pollfd *fds, nfds_t nfds, int timeout);
 
 ### 内核事件表
 
+epoll是Linux特有的I/O函数。在实现和使用上和select/poll差异较大。epoll使用一组函数完成任务，把用户关心的事件放在内核里的一个事件表中，从而无须每次重复传入文件描述符集或事件集。但epoll需要使用额外的文件描述符，来唯一标识内核中的事件表。文件描述符使用epoll_create函数来创建:
+
+```cpp
+#include <sys/epoll.h>
+int epoll_create(int size);
+```
+
+size参数是给内核的提示，以告知事件表需要多大。返回的文件描述符将用作其他epoll系统调用的第一个参数。
+
+下面的函数用于操作epoll的内核事件表:
+
+```cpp
+#include <sys/epoll.h>
+int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event);
+```
+
+- fd 要操作的文件描述符
+- op 指定操作类型
+  - EPOLL_CTL_ADD 往事件表中注册fd上的事件
+  - EPOLL_CTL_MOD 修改fd上的注册事件
+  - EPOLL_CTL_DEL 删除fd上的注册事件
+- event 指定事件
+
+    ```cpp
+    struct epoll_event {
+        __uint32_t events; //epoll事件
+        epoll_data_t data; //用户数据
+    };
+
+    typedef union epoll_data {
+        void *ptr;
+        int fd;
+        uint32_t u32;
+        uint64_t u64;
+    } epoll_data_t;
+    ```
+
+  - events成员描述事件类型，与poll的事件类型基本相同，需要在对应宏前加上E。epoll有两个额外事件类型:EPOLLET和EPOLLONESHOT，在后面讨论。
+  - data成员用于存储用户数据，其类型epoll_data_t是一个联合体
+    - fd 使用最多，指定事件从属的目标文件描述符
+    - ptr 指定与fd相关的用户数据 如果要将数据和fd联系起来，已实现快速的数据访问，要使用其他手段。比如放弃fd成员，在ptr指向的用户数据中包括fd
+- 成功时返回0，失败时返回-1并置errno
+
 ### epoll_wait函数
+
+epoll系列的主要接口，在一段超时事件内等待一组文件描述符上的事件。
+
+```cpp
+#include <sys/epoll.h>
+int epoll_wait(int epfd, struct epoll_event *events, int max_events, int timeout);
+```
+
+- 成功返回就绪文件描述符的个数，失败返回-1并设置errno
+- timeout 与poll函数相同
+- maxevents 指定最多监听多少事件，必须大于0
+- events 只用于输出检测到的就绪事件，极大提高了应用程序索引就绪文件描述符的效率。以下代码体现了该差别
+
+```cpp
+//poll
+int ret = poll(fds, MAX_EVENT_NUMBER, -1);
+//必须遍历所有已注册已找到就绪者
+for(int i = 0; i != MAX_EVENT_NUMBER; ++i) {
+    if(fds[i].revents & POLLIN) {
+        int sockfd = fds[i].fd;
+        //处理sockfd
+    }
+}
+
+//epoll
+int ret = epoll(epollfd, events, MAX_EVENT_NUMBER, -1);
+//仅遍历就绪的ret个
+for(int i = 0; i != ret; ++i) {
+    int sockfd = events[i].data.fd;
+    //肯定就绪，直接处理sockfd
+}
+```
 
 ### LT和ET模式
 
+两种模式: LT(Level Trigger, 电平触发)和ET(Edge Trigger, 边沿触发)模式。默认LT模式，相当于一个效率较高的poll。当往内核事件表中注册一个文件描述符上的EPOLLET事件时，将以ET模式操作该文件描述符。ET是epoll的高效工作模式。
+
+对LT模式，应用程序可以暂时不处理事件，该事件下一次仍会返回。但ET模式只会通知一次，故应用程序必须立即处理该事件。可见，ET模式在很大程度上降低了同一个epoll事件被重复触发的次数，因此效率要比LT模式高。
+
+注意 每个使用ET模式的文件描述符都应该是非阻塞的。如果文件描述符是阻塞的，那么读或写操作将会因为没有后续的事件而一直处于阻塞状态（饥渴状态）。
+
+根据`ltet.cpp`中代码的测试，同样发送18个字符时，lt触发了3次事件，et只触发了一次。(环境: g++ 13.2.1, C++20, O2优化)
+
 ### EPOLLONESHOT事件
 
-## 三组I/O复用事件的比较
+即使我们使用ET模式，一个socket上的某个事件还是可能被触发多次。这在并发程序中就会引起一个问题。比如一个线程（或进程，下同）在读取完某个socket上的数据后开始处理这些数据，而在数据的处理过程中该socket上又有新数据可读（EPOLLIN再次被触发），此时另外一个线程被唤醒来读取这些新的数据。于是就出现了两个线程同时操作一个socket的局面。这当然不是我们期望的。我们期望的是一个socket连接在任一时刻都只被一个线程处理。这一点可以使用epoll的EPOLLONESHOT事件实现。
+
+对于注册了EPOLLONESHOT事件的文件描述符，操作系统最多触发其上注册的一个可读、可写或者异常事件，且只触发一次，除非我们使用epoll_ctl函数重置该文件描述符上注册的EPOLLONESHOT事件。这样，当一个线程在处理某个socket时，其他线程是不可能有机会操作该socket的。但反过来思考，注册了EPOLLONESHOT事件的socket一旦被某个线程处理完毕，该线程就应该立即重置这个socket上的EPOLLONESHOT事件，以确保这个socket下一次可读时，其EPOLLIN事件能被触发，进而让其他工作线程有机会继续处理这个socket。
+
+## 三组I/O复用函数的比较
+
+从事件集、最大支持文件描述符数、工作模式和具体实现等四个方面进一步比较这三个I/O复用函数的异同，以明确在实际应用中应该选择使用哪个（或哪些）。
+
+|系统调用|select|poll|epoll|
+|-|-|-|-|
+|事件集合|通过3个参数分别传入3种事件，内核在线修改。用户每次调用都需要重置这三个参数|统一处理所有事件类型，用户通过`pollfd.events`传入感兴趣的事件，内核修改`pollfd.revents`反馈就绪事件|内核通过事件表直接管理用户感兴趣的事件，只需要通过epoll_wait返回就绪的事件|
+|应用程序索引就绪文件描述符的时间复杂度|O(n)|O(n)|O(1)|
+|最大支持文件描述符数|一般有最大值限制|65535|65535|
+|工作模式|LT|LT|支持ET高效模式|
+|内核实现和工作效率|轮询方式检测就绪事件，时间复杂度O(n)|轮询方式检测就绪事件，时间复杂度O(n)|回调方式，时间复杂度O(1)|
+
+当活动连接比较多的时候，epoll_wait的效率未必比select和poll高，因为此时回调函数被触发得过于频繁。所以epoll_wait适用于连接数量多，但活动连接较少的情况。
