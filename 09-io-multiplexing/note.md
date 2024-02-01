@@ -247,3 +247,82 @@ for(int i = 0; i != ret; ++i) {
 |内核实现和工作效率|轮询方式检测就绪事件，时间复杂度O(n)|轮询方式检测就绪事件，时间复杂度O(n)|回调方式，时间复杂度O(1)|
 
 当活动连接比较多的时候，epoll_wait的效率未必比select和poll高，因为此时回调函数被触发得过于频繁。所以epoll_wait适用于连接数量多，但活动连接较少的情况。
+
+## 高级应用一: 非阻塞connect
+
+connect系统调用的man手册中有如下一段内容：
+
+> EINPROGRESS
+> The socket is nonblocking and the connection cannot be completed immediately.It is possible to select(2)or poll(2)for completion by selecting the socket for writing.After select(2)indicates writability,use getsockopt(2)to read the SO_ERROR option at level SOL_SOCKET to determine whether connect()completed successfully(SO_ERROR is zero)or unsuccessfully(SO_ERROR is one of the usual error codes listed here,explaining the reason for the failure).
+
+connect出错时的一种errno值: EINPROGRESS。发生在对非阻塞的socket调用connect，连接又没有立即建立时。我们可以调用select、poll等函数来监听这个连接失败的socket上的可写事件。当select、poll函数返回后，再利用getsocketopt来读取错误码并清除该socket上的错误。如果错误码是0，表示连接成功建立，否则建立失败。
+
+通过上面的非阻塞connect方式，我们可以同时发起多个连接并一起等待。见代码`nonblock_connect.cpp`
+
+## 高级应用二: 聊天室程序
+
+ssh这样的登录服务要同时处理网络连接和用户输入，也可以使用I/O复用实现。本节以poll为例实现一个简单的聊天室程序，以阐述该复用。
+
+### 客户端
+
+使用poll同时监听用户输入和网络连接，并利用splice函数将用户输入内容直接定向到网络连接上发送之，从而实现数据零拷贝。代码见`chat_c.cpp`
+
+### 服务端
+
+使用poll同时管理监听socket和连接socket，并使用牺牲空间换取时间的策略提高服务器性能。代码见`chat_s.cpp`
+
+## 高级应用三: 同时处理TCP和UDP服务
+
+不少服务器程序能同时监听多个端口，比如超级服务inetd和android的调试服务adbd。
+
+`tcpudp.cpp`是同时处理TCP和UDP请求的服务器
+
+## 超级服务xinetd
+
+Linux因特网服务inetd是超级服务。它同时管理着多个子服务，即监听着多个端口。现通常使用的是升级版本xinetd，增加了一些控制选项并提高了安全性。
+
+### xinetd配置文件
+
+采用`/etc/xinetd.conf`和`/etc/xinetd.d`下的子配置文件来管理所有服务。主配置文件包含通用选项，可被子配置文件覆盖。每个子配置文件用于设置一个子服务的参数。比如telnet子服务的配置文件`/etc/xinetd.d/telnet`的典型内容如下:
+
+> \#default:on
+> \#description:The telnet server serves telnet sessions;it uses\
+> \#unencrypted username/password pairs for authentication.
+> service telnet
+> {
+> flags=REUSE
+> socket_type=stream
+> wait=no
+> user=root
+> server=/usr/sbin/in.telnetd
+> log_on_failure+=USERID
+> disable=no
+> }
+
+| 项目           | 含义                                                                      |
+| -------------- | ------------------------------------------------------------------------- |
+| service        | 服务名                                                                    |
+| flags          | 设置连接标志，reuse表示复用，已过时，默认启用                             |
+| socket_type    | 服务类型                                                                  |
+| wait           | 单线程(yes)还是多线程(no)方式。分别指子服务进程是否accept第一个以外的连接 |
+| user           | 以指定用户运行                                                            |
+| server         | 程序的完整路径                                                            |
+| log_on_failure | 定义服务不能启动时的日志参数                                              |
+| disable        | 是否启动子服务                                                            |
+
+配置文件内容很丰富，可以参考man文档。
+
+### 工作流程
+
+子服务中有的是标准服务，比如时间日期服务daytime、回射服务echo和丢弃服务discard。xinetd服务器在内部直接处理这些服务。还有的子服务则需要调用外部的服务器程序来处理。xinetd通过调用fork和exec函数来加载运行这些服务器程序。比如telnet、ftp服务都是这种类型的子服务。我们仍以telnet服务为例来探讨xinetd的工作流程。
+
+```mermaid
+flowchart TB
+A["socket"] --> B["bind()"] --> C["listen()\n(如果是TCP服务)"] --> D["select()"]
+--> E["accept()\n(if TCP)"] --> F["fork()"] -->|父进程| G["关闭accept返回的socket\n(if TCP)"]
+F -->|子进程| H[关闭文件描述符0、1、2] --> |标准服务| I[运行内部服务函数]
+H -->|外部服务| J[将socket dup到fd 012上，然后关闭socket]
+J --> K["setgid()\nsetuid()\nsetsid()"] --> L["exec()\n调用子服务程序"]
+C --> A
+G --> D
+```
