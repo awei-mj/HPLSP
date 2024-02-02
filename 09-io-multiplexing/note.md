@@ -253,7 +253,7 @@ for(int i = 0; i != ret; ++i) {
 connect系统调用的man手册中有如下一段内容：
 
 > EINPROGRESS
-> The socket is nonblocking and the connection cannot be completed immediately.It is possible to select(2)or poll(2)for completion by selecting the socket for writing.After select(2)indicates writability,use getsockopt(2)to read the SO_ERROR option at level SOL_SOCKET to determine whether connect()completed successfully(SO_ERROR is zero)or unsuccessfully(SO_ERROR is one of the usual error codes listed here,explaining the reason for the failure).
+> The socket is nonblocking and the connection cannot be completed immediately. It is possible to select(2)or poll(2)for completion by selecting the socket for writing.After select(2)indicates writability,use getsockopt(2)to read the SO_ERROR option at level SOL_SOCKET to determine whether connect()completed successfully(SO_ERROR is zero)or unsuccessfully(SO_ERROR is one of the usual error codes listed here,explaining the reason for the failure).
 
 connect出错时的一种errno值: EINPROGRESS。发生在对非阻塞的socket调用connect，连接又没有立即建立时。我们可以调用select、poll等函数来监听这个连接失败的socket上的可写事件。当select、poll函数返回后，再利用getsocketopt来读取错误码并清除该socket上的错误。如果错误码是0，表示连接成功建立，否则建立失败。
 
