@@ -119,7 +119,7 @@ bool http_conn::read() {
 }
 /*解析HTTP请求行，获得请求方法、目标URL，以及HTTP版本号*/
 http_conn::HTTP_CODE http_conn::parse_request_line(char *text) {
-    m_url = strpbrk(text, "\t");
+    m_url = strpbrk(text, "\t ");
     if (!m_url)
         return BAD_REQUEST;
     *m_url++ = '\0';
@@ -128,12 +128,12 @@ http_conn::HTTP_CODE http_conn::parse_request_line(char *text) {
         m_method = GET;
     else
         return BAD_REQUEST;
-    m_url += strspn(m_url, "\t");
-    m_version = strpbrk(m_url, "\t");
+    m_url += strspn(m_url, "\t ");
+    m_version = strpbrk(m_url, "\t ");
     if (!m_version)
         return BAD_REQUEST;
     *m_version++ = '\0';
-    m_version += strspn(m_version, "\t");
+    m_version += strspn(m_version, "\t ");
     if (strcasecmp(m_version, "HTTP/1.1") != 0)
         return BAD_REQUEST;
     if (strncasecmp(m_url, "http://", 7) == 0) {
@@ -177,7 +177,7 @@ http_conn::HTTP_CODE http_conn::parse_headers(char *text) {
         m_host = text;
     }
     else
-        printf("oop!unknow header%s\n", text);
+        printf("unknow header: %s\n", text);
     return NO_REQUEST;
 }
 /*我们没有真正解析HTTP请求的消息体，只是判断它是否被完整地读入了*/
@@ -196,7 +196,7 @@ http_conn::HTTP_CODE http_conn::process_read() {
     while (((m_check_state == CHECK_STATE_CONTENT) && (line_status == LINE_OK)) || ((line_status = parse_line()) == LINE_OK)) {
         text = get_line();
         m_start_line = m_checked_idx;
-        printf("got 1 http line:%s\n", text);
+        printf("got 1 http line: %s\n", text);
         switch (m_check_state) {
         case CHECK_STATE_REQUESTLINE:
             ret = parse_request_line(text);
@@ -222,8 +222,7 @@ http_conn::HTTP_CODE http_conn::process_read() {
     }
     return NO_REQUEST;
 }
-/*当得到一个完整、正确的HTTP请求时，我们就分析目标文件的属性。如果目标文件存在、对所有用户可读，且不是目录，则使用mmap将其映射到内存地址
-m_file_address处，并告诉调用者获取文件成功*/
+/*当得到一个完整、正确的HTTP请求时，我们就分析目标文件的属性。如果目标文件存在、对所有用户可读，且不是目录，则使用mmap将其映射到内存地址m_file_address处，并告诉调用者获取文件成功*/
 http_conn::HTTP_CODE http_conn::do_request() {
     strcpy(m_real_file, doc_root);
     int len = strlen(doc_root);
@@ -344,8 +343,7 @@ bool http_conn::process_write(HTTP_CODE ret) {
         break;
     case FILE_REQUEST:
         add_status_line(200, ok_200_title);
-        if (m_file_stat.st_size != 0)
-        {
+        if (m_file_stat.st_size != 0) {
             add_headers(m_file_stat.st_size);
             m_iv[0].iov_base = m_write_buf;
             m_iv[0].iov_len = m_write_idx;
@@ -354,14 +352,11 @@ bool http_conn::process_write(HTTP_CODE ret) {
             m_iv_count = 2;
             return true;
         }
-        else
-        {
+        else {
             const char *ok_string = "<html><body></body></html>";
             add_headers(strlen(ok_string));
             if (!add_content(ok_string))
-            {
                 return false;
-            }
         }
     default:
         return false;

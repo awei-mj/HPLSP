@@ -124,7 +124,7 @@ int poll(struct pollfd *fds, nfds_t nfds, int timeout);
     | POLLOUT    | 数据(包括普通数据和优先数据)可写                 |       T        |       T        |
     | POLLWRNORM | 普通数据可写                                     |       T        |       T        |
     | POLLWRBAND | 优先级带数据可写                                 |       T        |       T        |
-    | POLLRDIIUP | TCP连接被对方关闭，或对方关闭了写操作。由GNU引入 |       T        |       T        |
+    | POLLRDHUP | TCP连接被对方关闭，或对方关闭了写操作。由GNU引入 |       T        |       T        |
     | POLLERR    | 错误                                             |       F        |       T        |
     | POLLHUP    | 挂起。比如管道的写端被关闭后，读端将收到该事件   |       F        |       T        |
     | POLLNVAL   | 文件描述符没有打开                               |       F        |       T        |
