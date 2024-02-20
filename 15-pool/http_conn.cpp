@@ -297,7 +297,7 @@ bool http_conn::add_response(const char *format, ...) {
     return true;
 }
 bool http_conn::add_status_line(int status, const char *title) {
-    return add_response("%s%d%s\r\n", "HTTP/1.1", status, title);
+    return add_response("%s %d %s\r\n", "HTTP/1.1", status, title);
 }
 bool http_conn::add_headers(int content_len) {
     return add_content_length(content_len) && add_linger() && add_blank_line();
@@ -374,8 +374,7 @@ void http_conn::process() {
         return;
     }
     bool write_ret = process_write(read_ret);
-    if (!write_ret) {
+    if (!write_ret)
         close_conn();
-    }
     modfd(m_epollfd, m_sockfd, EPOLLOUT);
 }

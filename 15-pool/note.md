@@ -69,4 +69,4 @@ EPOLLONESHOT事件，这一事件能够确保一个客户连接在整个生命�
 
 ### main函数
 
-main函数很简单，它只需要负责I/O读写。见`webserver.cpp`
+main函数很简单，它只需要负责I/O读写。见`webserver.cpp`。服务器程序经过测试，可以相应Microsoft Edge、Firefox、Postman的请求(均在Linux平台)。
